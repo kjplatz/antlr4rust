@@ -24,7 +24,7 @@ use crate::tree::{ParseTree, ParseTreeVisitor, TerminalNode, Tree, VisitableDyn}
 pub trait ParserRuleContext<'input>:
     ParseTree<'input> + RuleContext<'input> + Debug + Tid<'input>
 {
-    fn set_exception(&self, _e: ANTLRError) {}
+    fn set_exception(&self, _e: &ANTLRError) {}
     fn has_exception(&self) -> bool { false }
     fn get_exception(&self) -> Option<Box<ANTLRError>> { None }
 
@@ -304,14 +304,19 @@ impl<'input, Ctx: CustomRuleContext<'input>> BorrowMut<Ctx> for BaseParserRuleCo
 impl<'input, Ctx: CustomRuleContext<'input> + TidAble<'input>> ParserRuleContext<'input>
     for BaseParserRuleContext<'input, Ctx>
 {
-    fn set_exception(&self, e: ANTLRError) {
+    fn set_exception(&self, e: &ANTLRError) {
         {
             if self.exception.try_borrow_mut().is_err() {
                 eprintln!("Unable to borrow as mutable: {:?}", self);
                 return;
             }
         }
-        self.exception.replace(Some(Box::new(e)));
+        self.exception.replace(Some(Box::new(e.clone())));
+        let mut ctx = self.get_parent();
+        while let Some(mut localctx) = ctx {
+            localctx.set_exception(e);
+            ctx = localctx.get_parent();
+        }
     }
 
     fn has_exception(&self) -> bool {
@@ -499,7 +504,7 @@ where
     T: DerefSeal<Target = I> + 'input + Debug + Tid<'input>,
     I: ParserRuleContext<'input> + 'input + ?Sized,
 {
-    fn set_exception(&self, e: ANTLRError) { self.deref().set_exception(e) }
+    fn set_exception(&self, e: &ANTLRError) { self.deref().set_exception(e) }
     fn has_exception(&self) -> bool { self.deref().has_exception() }
     fn get_exception(&self) -> Option<Box<ANTLRError>> { self.deref().get_exception() }
 

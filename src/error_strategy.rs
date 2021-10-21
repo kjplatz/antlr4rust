@@ -562,7 +562,7 @@ impl<'input, Ctx: ParserNodeType<'input>> BailErrorStrategy<'input, Ctx> {
         let mut ctx = recognizer.get_parser_rule_context().clone();
         let _: Option<()> = try {
             loop {
-                ctx.set_exception(e.clone());
+                ctx.set_exception(e);
                 ctx = ctx.get_parent()?
             }
         };
@@ -617,7 +617,7 @@ impl<'a, T: Parser<'a>> ErrorStrategy<'a, T> for BailErrorStrategy<'a, T::Node> 
 
     #[inline(always)]
     fn report_error(&mut self, recognizer: &mut T, e: &ANTLRError) {
-        self.0.report_error(recognizer, e)
+        self.0.report_error(recognizer, e);
     }
 
     #[inline(always)]
